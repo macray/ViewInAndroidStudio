@@ -18,258 +18,284 @@ using System.Text;
 
 namespace Taiste.ViewInAndroidStudio.Util
 {
-    public static class ProjectExtensions
-    {
-        const string ArchiveName = "AndroidTemplate.zip";
+	public static class ProjectExtensions
+	{
+		const string ArchiveName = "AndroidTemplate.zip";
 
 
-        static readonly string[] SupportLibs = {
-            "com.android.support:appcompat-v7",
-            "com.android.support:design",
-            "com.android.support:support-v4",
-            "com.android.support:cardview-v7",
-            "com.android.support:gridlayout-v7",
-            "com.android.support:recyclerview-v7",
-            "com.android.support:preference-v7",
-            "com.android.support:support-v13",
-            "com.android.support:preference-v14",
-            "com.android.support:support-annotations",
-            "com.android.support:design",
-            "com.android.support:percent",
-        };
+		static readonly string[] SupportLibs = {
+			"com.android.support:appcompat-v7",
+			"com.android.support:design",
+			"com.android.support:support-v4",
+			"com.android.support:cardview-v7",
+			"com.android.support:gridlayout-v7",
+			"com.android.support:recyclerview-v7",
+			"com.android.support:preference-v7",
+			"com.android.support:support-v13",
+			"com.android.support:preference-v14",
+			"com.android.support:support-annotations",
+			"com.android.support:design",
+			"com.android.support:percent",
+		};
 
-        public static void CreateAndroidStudioProject (this Project p)
-        {
-            FilePath androidStudioProjectPath = GetAndroidStudioProjectPath (p);
+		public static void CreateAndroidStudioProject(this Project p)
+		{
+			FilePath androidStudioProjectPath = GetAndroidStudioProjectPath(p);
 
-            try {
-                if (Directory.Exists (androidStudioProjectPath)) {
-                    Directory.Delete (androidStudioProjectPath, true);
-                }
-                Directory.CreateDirectory (androidStudioProjectPath);
-            } catch (IOException e) {
-                GtkHelpers.ShowDialog (String.Format ("Could not (re)create project directory: {0}", e.Message), MessageType.Error);
-                return;
-            }
+			try
+			{
+				if (Directory.Exists(androidStudioProjectPath))
+				{
+					Directory.Delete(androidStudioProjectPath, true);
+				}
+				Directory.CreateDirectory(androidStudioProjectPath);
+			}
+			catch (IOException e)
+			{
+				GtkHelpers.ShowDialog(String.Format("Could not (re)create project directory: {0}", e.Message), MessageType.Error);
+				return;
+			}
 
-            p.CreateAndroidStudioProjectStructure ();
+			p.CreateAndroidStudioProjectStructure();
 
-            ViewHandler.OpenFileInAndroidStudio (androidStudioProjectPath.Combine ("build.gradle"));
-        }
+			ViewHandler.OpenFileInAndroidStudio(androidStudioProjectPath.Combine("build.gradle"));
+		}
 
-        static void CreateAndroidStudioProjectStructure (this Project p)
-        {
-            
-            FilePath archivePath = 
-                new FilePath (Assembly.GetExecutingAssembly ().Location)
-                    .ParentDirectory.Combine (ArchiveName);
+		static void CreateAndroidStudioProjectStructure(this Project p)
+		{
 
-            var xamarinResourcePath = p.GetResourceDirectoryPath ();
-            var androidStudioResourcePath = p.GetAndroidStudioProjectResourceDirectoryPath ();
-            try {
-                ZipFile.ExtractToDirectory (archivePath, p.GetAndroidStudioProjectPath ());
+			FilePath archivePath =
+				new FilePath(Assembly.GetExecutingAssembly().Location)
+					.ParentDirectory.Combine(ArchiveName);
 
-                p.LinkResourceFiles ();
+			var xamarinResourcePath = p.GetResourceDirectoryPath();
+			var androidStudioResourcePath = p.GetAndroidStudioProjectResourceDirectoryPath();
+			try
+			{
+				ZipFile.ExtractToDirectory(archivePath, p.GetAndroidStudioProjectPath());
 
-                p.MakeAliasFile ();
-                p.FinishGradleFile ();
+				p.LinkResourceFiles();
 
-            } catch (IOException e) {
-                GtkHelpers.ShowDialog (String.Format ("Could not (re)create project structure: {0}", e.Message), MessageType.Error);
-            }
+				p.MakeAliasFile();
+				p.FinishGradleFile();
 
-        }
+			}
+			catch (IOException e)
+			{
+				GtkHelpers.ShowDialog(String.Format("Could not (re)create project structure: {0}", e.Message), MessageType.Error);
+			}
 
-        static void LinkResourceFiles (this Project p)
-        {
-            if (Environment.OSVersion.Platform != PlatformID.Unix &&
-                Environment.OSVersion.Platform != PlatformID.MacOSX) {
-                throw new NotImplementedException ("Not Implemented for current platform");
-            }
-            var oldPath = p.GetResourceDirectoryPath ();
-            var newPath = p.GetAndroidStudioProjectResourceDirectoryPath ();
+		}
 
-            foreach (var dirPath in Directory.EnumerateDirectories(oldPath)) {
-                var directoryName = new FilePath (dirPath).FileName;
-                bool isLayout = directoryName.StartsWith ("layout");
-                var newDirPath = newPath.Combine (directoryName);
-                Directory.CreateDirectory (newDirPath);
-               
-                foreach (var fileName in p.Files
-                    .Where(f => f.FilePath.IsChildPathOf(new FilePath(dirPath)))) {
-                    var fName = fileName.FilePath.FileName;
-                    var oldFilePath = new FilePath (dirPath).Combine (fName);
+		static void LinkResourceFiles(this Project p)
+		{
+			if (Environment.OSVersion.Platform != PlatformID.Unix &&
+				Environment.OSVersion.Platform != PlatformID.MacOSX)
+			{
+				throw new NotImplementedException("Not Implemented for current platform");
+			}
+			var oldPath = p.GetResourceDirectoryPath();
+			var newPath = p.GetAndroidStudioProjectResourceDirectoryPath();
 
-                    var newFilePath = newDirPath.Combine (TransformFileName (fName, isLayout));
-                    Syscall.symlink (oldFilePath, newFilePath);
-                }
-            }
+			foreach (var dirPath in Directory.EnumerateDirectories(oldPath))
+			{
+				var directoryName = new FilePath(dirPath).FileName;
+				bool isLayout = directoryName.StartsWith("layout");
+				var newDirPath = newPath.Combine(directoryName);
+				Directory.CreateDirectory(newDirPath);
 
-        }
+				foreach (var fileName in p.Files
+					.Where(f => f.FilePath.IsChildPathOf(new FilePath(dirPath))))
+				{
+					var fName = fileName.FilePath.FileName;
+					var oldFilePath = new FilePath(dirPath).Combine(fName);
 
-        static string ConvertCharToUniqueString (char c)
-        {
-            if (Char.IsDigit (c) ||
-                (c >= 'a' && c <= 'z') ||
-                (c >= 'A' && c <= 'Z') ||
-                c == '_' ||
-                c == '.') {
-                return "" + c;
-            }
-            string res = "";
-            while (c > ((char)0)) {
-                c--;
-                res = (char)('a' + c % 26) + res;
-                c = (char)(c / 26);
-            }
-            return "_" + res;
-        }
+					var newFilePath = newDirPath.Combine(TransformFileName(fName, isLayout));
+					Syscall.symlink(oldFilePath, newFilePath);
+				}
+			}
 
-        static string TransformFileName (string fileName, bool isLayout)
-        {
-            if (fileName.EndsWith ("axml")) {
-                fileName = String.Join (".", fileName.Substring (0, fileName.LastIndexOf ('.')), "xml");
-            }
+		}
 
-            fileName = Regex.Replace (fileName, "([A-Z])", (match) => ((match.Index != 0) ? "_" : "") + match.Value.ToLower ());
-            fileName = String.Join ("", fileName.Select (c => ConvertCharToUniqueString (c)));
-            return (isLayout ? "_res_" : "") + fileName;
-        }
+		static string ConvertCharToUniqueString(char c)
+		{
+			if (Char.IsDigit(c) ||
+				(c >= 'a' && c <= 'z') ||
+				(c >= 'A' && c <= 'Z') ||
+				c == '_' ||
+				c == '.')
+			{
+				return "" + c;
+			}
+			string res = "";
+			while (c > ((char)0))
+			{
+				c--;
+				res = (char)('a' + c % 26) + res;
+				c = (char)(c / 26);
+			}
+			return "_" + res;
+		}
 
-        static IEnumerable<ProjectFile> SelectDistinctFilesWithCapital (this IEnumerable<ProjectFile> filePaths)
-        {
-            return filePaths.Where (f => new FilePath (f.Name).FileName.Any (Char.IsUpper)).Distinct ();
-        }
+		static string TransformFileName(string fileName, bool isLayout)
+		{
+			if (fileName.EndsWith("axml"))
+			{
+				fileName = String.Join(".", fileName.Substring(0, fileName.LastIndexOf('.')), "xml");
+			}
 
-        static List<ProjectFile> GetResourceFilesByType (this Project p, string fileType)
-        {
-            var dirs = Directory.EnumerateDirectories (p.GetResourceDirectoryPath ())
-                .Where (d => new FilePath (d).FileName.StartsWith (fileType));
-            return  p.Files.Where (f => 
-                dirs.Any (d => f.FilePath.IsChildPathOf (d)))
-                    .SelectDistinctFilesWithCapital ()
-                    .ToList ();
-            
-        }
+			fileName = Regex.Replace(fileName, "([A-Z])", (match) => ((match.Index != 0) ? "_" : "") + match.Value.ToLower());
+			fileName = String.Join("", fileName.Select(c => ConvertCharToUniqueString(c)));
+			return (isLayout ? "_res_" : "") + fileName;
+		}
 
-        static readonly string[] AliasedFileTypes = {
-            "layout", "drawable", "mipmap"
-        };
+		static IEnumerable<ProjectFile> SelectDistinctFilesWithCapital(this IEnumerable<ProjectFile> filePaths)
+		{
+			return filePaths.Where(f => new FilePath(f.Name).FileName.Any(Char.IsUpper)).Distinct();
+		}
 
-        static void MakeAliasFile (this Project p)
-        {
-            var newPath = p.GetAndroidStudioProjectResourceDirectoryPath ();
-            var valuesDir = newPath.Combine ("values");
+		static List<ProjectFile> GetResourceFilesByType(this Project p, string fileType)
+		{
+			var dirs = Directory.EnumerateDirectories(p.GetResourceDirectoryPath())
+				.Where(d => new FilePath(d).FileName.StartsWith(fileType));
+			return p.Files.Where(f =>
+			  dirs.Any(d => f.FilePath.IsChildPathOf(d)))
+					.SelectDistinctFilesWithCapital()
+					.ToList();
 
-            if (!Directory.Exists (valuesDir)) {
-                Directory.CreateDirectory (valuesDir);
-            }
+		}
 
-            var aliasFile = valuesDir.Combine ("__aliases_.xml");
-            XElement aliasRoot = null;
-            if (File.Exists (aliasFile)) {
-                try {
-                    using (var input = File.OpenRead (aliasFile)) {
-                        aliasRoot = XElement.Load (new XmlTextReader (input));
-                    }
-                } catch (Exception e) {
-                    System.Diagnostics.Debug.WriteLine ("Could not read layout alias file: " + e.Message);                        
-                }
-                File.Delete (aliasFile);
-            }
+		static readonly string[] AliasedFileTypes = {
+			"layout", "drawable", "mipmap"
+		};
 
-            if (aliasRoot == null) {
-                aliasRoot = new XElement (XName.Get ("resources"));
-            }
+		static void MakeAliasFile(this Project p)
+		{
+			var newPath = p.GetAndroidStudioProjectResourceDirectoryPath();
+			var valuesDir = newPath.Combine("values");
 
-            foreach (var fileType in AliasedFileTypes) {
-                AddAliases (fileType, p.GetResourceFilesByType (fileType), aliasRoot);
-            }
+			if (!Directory.Exists(valuesDir))
+			{
+				Directory.CreateDirectory(valuesDir);
+			}
 
-            using (var writer = new XmlTextWriter (aliasFile, System.Text.Encoding.UTF8)) {
-                writer.Formatting = Formatting.Indented;
-                aliasRoot.WriteTo (writer);
-            }
+			var aliasFile = valuesDir.Combine("__aliases_.xml");
+			XElement aliasRoot = null;
+			if (File.Exists(aliasFile))
+			{
+				try
+				{
+					using (var input = File.OpenRead(aliasFile))
+					{
+						aliasRoot = XElement.Load(new XmlTextReader(input));
+					}
+				}
+				catch (Exception e)
+				{
+					System.Diagnostics.Debug.WriteLine("Could not read layout alias file: " + e.Message);
+				}
+				File.Delete(aliasFile);
+			}
 
-        }
+			if (aliasRoot == null)
+			{
+				aliasRoot = new XElement(XName.Get("resources"));
+			}
 
-        static void AddAliases (string resourceType, List<ProjectFile> files, XElement aliasRoot)
-        {
-            foreach (var file in files) {
-                var fileName = file.FilePath.FileName;
-                fileName = fileName.Substring (0, fileName.LastIndexOf ('.'));
+			foreach (var fileType in AliasedFileTypes)
+			{
+				AddAliases(fileType, p.GetResourceFilesByType(fileType), aliasRoot);
+			}
 
-                var layoutName = "@" + resourceType + "/" + TransformFileName (fileName, resourceType == "layout"); //TODO smarter check
+			using (var writer = new XmlTextWriter(aliasFile, System.Text.Encoding.UTF8))
+			{
+				writer.Formatting = Formatting.Indented;
+				aliasRoot.WriteTo(writer);
+			}
 
-                XElement aliasElement = new XElement (XName.Get ("item"));
-                aliasElement.Add (new XAttribute (XName.Get ("name"), fileName));
-                aliasElement.Add (new XAttribute (XName.Get ("type"), resourceType));
-                aliasElement.Value = layoutName;
-                aliasRoot.Add (aliasElement);
-            }
-        }
+		}
 
-        static void FinishGradleFile (this Project p)
-        {
+		static void AddAliases(string resourceType, List<ProjectFile> files, XElement aliasRoot)
+		{
+			foreach (var file in files)
+			{
+				var fileName = file.FilePath.FileName;
+				fileName = fileName.Substring(0, fileName.LastIndexOf('.'));
 
-            FilePath pathToBuildGradle = p.GetAndroidStudioProjectPath ().Combine ("app").Combine ("build.gradle");
-            string contents = null;
+				var layoutName = "@" + resourceType + "/" + TransformFileName(fileName, resourceType == "layout"); //TODO smarter check
 
-            using (StreamReader reader = new StreamReader (File.OpenRead (pathToBuildGradle))) {
-                contents = reader.ReadToEnd ();
-            }
+				XElement aliasElement = new XElement(XName.Get("item"));
+				aliasElement.Add(new XAttribute(XName.Get("name"), fileName));
+				aliasElement.Add(new XAttribute(XName.Get("type"), resourceType));
+				aliasElement.Value = layoutName;
+				aliasRoot.Add(aliasElement);
+			}
+		}
 
-            Regex.Replace (contents, "compileSdkVersion ([0-9]+)", (match) => 
-                "compileSdkVersion " + AddInPreferences.CompileSdkVersion
-            );
+		static void FinishGradleFile(this Project p)
+		{
 
-            Regex.Replace (contents, "buildToolsVersion \"([0-9.]+)\"", (match) => 
-                "buildToolsVersion \"" + AddInPreferences.BuildToolsVersion + "\""
-            );
+			FilePath pathToBuildGradle = p.GetAndroidStudioProjectPath().Combine("app").Combine("build.gradle");
+			string contents = null;
 
-            Regex.Replace (contents, "minSdkVersion ([0-9]+)", (match) => 
-                "minSdkVersion " + AddInPreferences.MinSdkVersion
-            );
+			using (StreamReader reader = new StreamReader(File.OpenRead(pathToBuildGradle)))
+			{
+				contents = reader.ReadToEnd();
+			}
 
-            Regex.Replace (contents, "targetSdkVersion ([0-9]+)", (match) => 
-                "targetSdkVersion " + AddInPreferences.CompileSdkVersion
-            );
+			Regex.Replace(contents, "compileSdkVersion ([0-9]+)", (match) =>
+			   "compileSdkVersion " + AddInPreferences.CompileSdkVersion
+			);
 
-            StringBuilder fileContents = new StringBuilder (contents);
+			Regex.Replace(contents, "buildToolsVersion \"([0-9.]+)\"", (match) =>
+			   "buildToolsVersion \"" + AddInPreferences.BuildToolsVersion + "\""
+			);
 
-            fileContents.AppendLine ("dependencies {");
-            fileContents.AppendLine ("    compile fileTree(dir: 'libs', include: ['*.jar'])");
-            fileContents.AppendLine ("    testCompile 'junit:junit:4.12'");
+			Regex.Replace(contents, "minSdkVersion ([0-9]+)", (match) =>
+			   "minSdkVersion " + AddInPreferences.MinSdkVersion
+			);
 
-            foreach (var package in SupportLibs) {
-                fileContents.AppendLine ("    compile '" + package + ":" + AddInPreferences.SupportVersion + "'");
-            }
-            fileContents.AppendLine ("}");
+			Regex.Replace(contents, "targetSdkVersion ([0-9]+)", (match) =>
+			   "targetSdkVersion " + AddInPreferences.CompileSdkVersion
+			);
 
-            using (StreamWriter writer = new StreamWriter (File.OpenWrite (pathToBuildGradle))) {
-                writer.Write (fileContents);
-            }
-        }
+			StringBuilder fileContents = new StringBuilder(contents);
 
-        public static FilePath GetAndroidStudioProjectPath (this Project p)
-        {
-            return AddInPreferences.ProjectsDirectoryPath.Combine (p.Name);
-        }
+			fileContents.AppendLine("dependencies {");
+			fileContents.AppendLine("    compile fileTree(dir: 'libs', include: ['*.jar'])");
+			fileContents.AppendLine("    testCompile 'junit:junit:4.12'");
 
-        public static FilePath GetAndroidStudioProjectResourceDirectoryPath (this Project p)
-        {
-            return GetAndroidStudioProjectPath (p).Combine ("app").Combine ("src").Combine ("main").Combine ("res");
-        }
+			foreach (var package in SupportLibs)
+			{
+				fileContents.AppendLine("    compile '" + package + ":" + AddInPreferences.SupportVersion + "'");
+			}
+			fileContents.AppendLine("}");
 
-        public static FilePath GetResourceDirectoryPath (this Project p)
-        {
-            return p.BaseDirectory.Combine ("Resources");
-        }
+			using (StreamWriter writer = new StreamWriter(File.OpenWrite(pathToBuildGradle)))
+			{
+				writer.Write(fileContents);
+			}
+		}
 
-        public static bool IsAndroidProject (this Project p)
-        {
-            return p.GetProjectTypes ().Contains ("MonoDroid");
-        }
-    }
+		public static FilePath GetAndroidStudioProjectPath(this Project p)
+		{
+			return AddInPreferences.ProjectsDirectoryPath.Combine(p.Name);
+		}
+
+		public static FilePath GetAndroidStudioProjectResourceDirectoryPath(this Project p)
+		{
+			return GetAndroidStudioProjectPath(p).Combine("app").Combine("src").Combine("main").Combine("res");
+		}
+
+		public static FilePath GetResourceDirectoryPath(this Project p)
+		{
+			return p.BaseDirectory.Combine("Resources");
+		}
+
+		public static bool IsAndroidProject(this Project p)
+		{
+			return (p is DotNetProject) && ((DotNetProject)p).TargetFramework.Id.Identifier.Contains("Android");
+		}
+	}
 }
 

@@ -8,6 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Taiste.ViewInAndroidStudio</RootNamespace>
     <AssemblyName>ViewInAndroidStudioAddIn</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -54,6 +55,15 @@
     <Reference Include="Mono.Posix" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="Mono.Addins">
+      <HintPath>..\packages\MonoDevelop.Addins.0.3.3\build\net40\Mono.Addins.dll</HintPath>
+    </Reference>
+    <Reference Include="MonoDevelop.Addins.Tasks">
+      <HintPath>..\packages\MonoDevelop.Addins.0.3.3\build\net40\MonoDevelop.Addins.Tasks.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Addins.Setup">
+      <HintPath>..\packages\MonoDevelop.Addins.0.3.3\build\net40\Mono.Addins.Setup.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Util\" />
